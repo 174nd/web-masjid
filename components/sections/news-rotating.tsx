@@ -164,16 +164,17 @@ export function NewsRotating({
   const spring = { type: "spring" as const, stiffness: 320, damping: 34, mass: 0.9 };
 
   return (
-    <section id="news" aria-label="News" className="py-14 md:py-20">
+    <section id="news" aria-label="News" className="py-14 md:py-10">
       <Container>
         <div className="flex items-end justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-primary">{subtitle}</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">{title}</h2>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+              <span className="text-primary">Berita</span> & Artikel
+            </h2>
           </div>
 
           <Link href="/news" className="text-sm text-muted-foreground hover:text-foreground">
-            View all
+            Lihat Semua
           </Link>
         </div>
 
@@ -254,7 +255,7 @@ export function NewsRotating({
                 </AnimatePresence>
               </div>
 
-              <p className="mt-4 text-xs text-muted-foreground">Auto-rotates every {Math.round(intervalMs / 1000)}s.</p>
+              {/* <p className="mt-4 text-xs text-muted-foreground">Auto-rotates every {Math.round(intervalMs / 1000)}s.</p> */}
             </div>
           </div>
         </div>

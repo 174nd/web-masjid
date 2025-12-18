@@ -160,7 +160,7 @@ export function Hero({ backgroundImages = DEFAULT_BACKGROUNDS, cycleMs = 6000 }:
                   <br />
                   <span className="font-oswald">
                     Di Masjid <br />
-                    <strong>Asy-Syuhada</strong>
+                    <strong className="text-primary">Asy-Syuhada</strong>
                   </span>
                 </motion.h1>
 

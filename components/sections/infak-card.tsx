@@ -89,9 +89,9 @@ export function InfakCard({
   const [hovered, setHovered] = React.useState(false);
 
   return (
-    <section id="infak" aria-label="Infak" className="py-14 md:py-20">
+    <section id="infak" aria-label="Infak" className="py-14 md:py-10">
       <Container>
-        <div className="rounded-2xl border bg-background/60 p-6 backdrop-blur md:p-10">
+        <div className="rounded-2xl border bg-primary/60 p-6 backdrop-blur md:p-10">
           <div className="grid items-start gap-10 md:grid-cols-2">
             {/* LEFT: QR + moving boxes behind */}
             <motion.div
@@ -101,12 +101,12 @@ export function InfakCard({
             >
               {/* Boxes behind (only these move on hover) */}
               <motion.div
-                className="absolute -inset-6 -z-10"
+                className="absolute -inset-6 -z-10 "
                 aria-hidden="true"
                 animate={hovered ? { x: 6, y: -4, rotate: 2, scale: 1.02 } : { x: 0, y: 0, rotate: 0, scale: 1 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
               >
-                <svg viewBox="0 0 520 520" className="h-full w-full">
+                <svg viewBox="0 0 520 520" className="h-full w-full ">
                   <motion.rect
                     x="56"
                     y="92"
@@ -156,14 +156,10 @@ export function InfakCard({
 
             {/* RIGHT: Title + chart */}
             <div className="md:order-2 order-1">
-              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{title}</h2>
-              <p className="mt-3 text-muted-foreground md:text-lg">{subtitle}</p>
+              <h2 className="text-3xl text-white font-bold tracking-tight md:text-4xl">{title}</h2>
+              <p className="mt-3 text-muted md:text-lg">{subtitle}</p>
 
               <Chart data={data} />
-
-              <div className="mt-4 text-xs text-muted-foreground">
-                Catatan: Grafik bersifat ringkasan. Detail transaksi dapat ditampilkan di halaman laporan.
-              </div>
             </div>
           </div>
         </div>

@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Container } from "@/components/layout/container";
+import { YouTubeLiveStreamEmbed } from "@/components/media/youtube-livestream-embed";
+import { Badge } from "../ui/badge";
 
 type Timings = {
   Fajr: string;
@@ -19,7 +21,12 @@ type ApiResponse = {
   timings: Timings;
 };
 
-type Row = { key: keyof Timings; label: string; time: string };
+type Row = {
+  key: keyof Timings;
+  label: string;
+  time: string;
+  at: number;
+};
 
 function parseHHMMToSeconds(hhmm: string) {
   const m = hhmm.match(/(\d{1,2}):(\d{2})/);
@@ -37,34 +44,41 @@ function formatDuration(totalSeconds: number) {
   return `${hh}:${mm}:${ss}`;
 }
 
-function getTodayRows(t: Timings): Row[] {
-  return [
+function buildRows(t: Timings): Row[] {
+  const rows: Array<Omit<Row, "at">> = [
     { key: "Fajr", label: "Subuh", time: t.Fajr },
     { key: "Dhuhr", label: "Dzuhur", time: t.Dhuhr },
     { key: "Asr", label: "Ashar", time: t.Asr },
     { key: "Maghrib", label: "Maghrib", time: t.Maghrib },
     { key: "Isha", label: "Isya", time: t.Isha },
   ];
+
+  return rows.map((r) => ({ ...r, at: parseHHMMToSeconds(r.time) })).sort((a, b) => a.at - b.at);
 }
 
-function getStatus(rows: Row[], nowSeconds: number) {
-  const schedule = rows.map((r) => ({ ...r, at: parseHHMMToSeconds(r.time) })).sort((a, b) => a.at - b.at);
-
-  const next = schedule.find((s) => nowSeconds < s.at) ?? schedule[0];
-  const nextIndex = schedule.findIndex((s) => s.key === next.key);
-
-  const prevIndex = nextIndex - 1;
-  const current = prevIndex >= 0 ? schedule[prevIndex] : null;
-
-  const countdown = nowSeconds < next.at ? next.at - nowSeconds : 24 * 3600 - nowSeconds + next.at;
-
-  return { next, current, countdown };
+function mod(n: number, m: number) {
+  return ((n % m) + m) % m;
 }
 
-export function PrayerTimesBatam() {
+function getCurrentIndex(schedule: Row[], nowSeconds: number) {
+  let idx = -1;
+  for (let i = 0; i < schedule.length; i++) {
+    if (schedule[i].at <= nowSeconds) idx = i;
+  }
+  return idx === -1 ? schedule.length - 1 : idx;
+}
+
+type PrayerTimesBatamProps = {
+  /** ID video live YouTube (opsional) */
+  liveVideoId?: string;
+  /** Channel embed (opsional). Gunakan salah satu videoId atau channelId */
+  liveChannelId?: string;
+};
+
+export function PrayerTimesBatam({ liveVideoId, liveChannelId }: PrayerTimesBatamProps) {
   const [data, setData] = React.useState<ApiResponse | null>(null);
 
-  // penting: jangan render jam/countdown saat SSR
+  // anti hydration mismatch
   const [mounted, setMounted] = React.useState(false);
   const [now, setNow] = React.useState<Date | null>(null);
 
@@ -86,106 +100,120 @@ export function PrayerTimesBatam() {
     return () => window.clearInterval(id);
   }, [mounted]);
 
-  const rows = data ? getTodayRows(data.timings) : [];
+  const schedule = React.useMemo(() => {
+    if (!data) return [];
+    return buildRows(data.timings);
+  }, [data]);
+
   const nowSeconds = mounted && now ? now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() : 0;
 
-  const status = data && mounted && now ? getStatus(rows, nowSeconds) : null;
-  const nextKey = status?.next.key;
-  const currentKey = status?.current?.key ?? null;
+  const currentIndex = schedule.length && mounted && now ? getCurrentIndex(schedule, nowSeconds) : 0;
+
+  const nextIndex = schedule.length ? mod(currentIndex + 1, schedule.length) : 0;
+
+  const current = schedule[currentIndex];
+  const next = schedule[nextIndex];
+
+  const countdown = schedule.length && mounted && now ? (nowSeconds < next.at ? next.at - nowSeconds : 24 * 3600 - nowSeconds + next.at) : 0;
+
+  const windowRows = schedule.length > 0 ? [-2, -1, 0, 1, 2].map((d) => schedule[mod(currentIndex + d, schedule.length)]) : [];
 
   return (
-    <section id="prayer-times" aria-label="Jadwal sholat Batam" className="py-14 md:py-20">
+    <section id="prayer-times" aria-label="Jadwal sholat Batam" className="py-14 md:py-10 scroll-mt-24">
       <Container>
-        <div className="flex items-end justify-between gap-6">
+        <div className="flex items-center justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-primary">Jadwal Sholat</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">Wilayah Batam</h2>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+              <span className="text-primary">Jadwal Sholat </span>
+              Wilayah Batam
+            </h2>
           </div>
 
-          <div className="text-right text-xs text-muted-foreground">
+          <div className="text-right text-xs text-muted-foreground md:inline hidden">
             <div>{data?.date ? `Tanggal: ${data.date}` : "Memuat tanggal..."}</div>
-
-            {/* Render jam hanya setelah mount untuk menghindari hydration mismatch */}
             <div suppressHydrationWarning>Waktu lokal: {mounted && now ? now.toLocaleTimeString("id-ID") : "--:--:--"}</div>
           </div>
         </div>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-12">
-          {/* LEFT: jadwal hari ini */}
-          <div className="md:col-span-7">
-            <div className="rounded-2xl border bg-background/60 p-4 backdrop-blur md:p-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Jadwal Hari Ini</p>
-                <p className="text-xs text-muted-foreground">{data?.timezone ?? "Asia/Jakarta"}</p>
-              </div>
+        {/* equal height + mobile order right on top */}
+        <div className="mt-8 grid items-stretch gap-6 md:grid-cols-12">
+          {/* LEFT: list */}
+          <div className="order-2 md:order-1 md:col-span-5">
+            <div className="flex h-full flex-col">
+              {/* schedule card */}
+              <div className="rounded-2xl border bg-background/60 p-4 backdrop-blur md:p-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Jadwal (Sekitar Sekarang)</p>
+                  <p className="text-xs text-muted-foreground">{data?.timezone ?? "Asia/Jakarta"}</p>
+                </div>
 
-              <div className="mt-4 divide-y">
-                {rows.length === 0 ? (
-                  <div className="py-6 text-sm text-muted-foreground">Memuat jadwal...</div>
-                ) : (
-                  rows.map((r) => {
-                    const isNext = r.key === nextKey;
-                    const isCurrent = r.key === currentKey;
-                    return (
-                      <div
-                        key={r.key}
-                        className={["flex items-center justify-between py-3", isNext ? "bg-primary/10 px-3 rounded-md" : ""].join(" ")}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{r.label}</span>
+                <div className="mt-4 space-y-2">
+                  {windowRows.length === 0 ? (
+                    <div className="py-6 text-sm text-muted-foreground">Memuat jadwal...</div>
+                  ) : (
+                    windowRows.map((r, idx) => {
+                      const isCurrent = current && r.key === current.key;
+                      return (
+                        <div
+                          key={`${r.key}-${idx}`}
+                          className={[
+                            "flex items-center justify-between rounded-xl border px-4 py-3 transition-colors",
+                            isCurrent ? "bg-primary/10 border-primary/30" : "bg-background hover:bg-accent/40",
+                          ].join(" ")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={isCurrent ? "text-sm font-semibold" : "text-sm"}>{r.label}</span>
+                            {isCurrent ? <Badge variant="default">Sekarang</Badge> : null}
+                          </div>
 
-                          {isCurrent ? <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">sedang berlangsung</span> : null}
-
-                          {isNext ? <span className="rounded-md bg-primary px-2 py-0.5 text-xs text-primary-foreground">berikutnya</span> : null}
+                          <span className={["text-sm font-semibold tabular-nums", isCurrent ? "text-foreground" : "text-muted-foreground"].join(" ")}>
+                            {r.time}
+                          </span>
                         </div>
-
-                        <span className="text-sm font-semibold tabular-nums">{r.time}</span>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: card besar status sekarang */}
-          <div className="md:col-span-5">
-            <div className="rounded-2xl border bg-background/60 p-6 backdrop-blur">
-              <p className="text-xs text-muted-foreground">Status</p>
+          {/* RIGHT: current + next + countdown (mobile first) */}
+          <div className="order-1 md:order-2 md:col-span-7">
+            <div className="h-full rounded-2xl border bg-background/60 p-6 backdrop-blur">
+              <p className="text-xs text-muted-foreground">Sedang berlangsung</p>
 
               <div className="mt-2">
-                <p className="text-2xl font-bold tracking-tight">
-                  {status?.next ? `Menuju ${rows.find((r) => r.key === status.next.key)?.label ?? status.next.key}` : "Memuat..."}
-                </p>
-
+                <p className="text-2xl font-bold tracking-tight">{current ? current.label : "Memuat..."}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Waktu: <span className="font-medium">{status?.next?.time ?? "-"}</span>
+                  Jam: <span className="font-medium tabular-nums">{current?.time ?? "-"}</span>
                 </p>
               </div>
 
               <div className="mt-6 rounded-xl border bg-background p-4">
-                <p className="text-xs text-muted-foreground">Countdown</p>
+                <p className="text-xs text-muted-foreground">Berikutnya</p>
+                <div className="mt-2 flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-lg font-semibold">{next ? next.label : "-"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Jam: <span className="font-medium tabular-nums">{next?.time ?? "-"}</span>
+                    </p>
+                  </div>
 
-                {/* countdown juga jangan render real sebelum mount */}
-                <p className="mt-1 text-3xl font-bold tabular-nums" suppressHydrationWarning>
-                  {status ? formatDuration(status.countdown) : "--:--:--"}
-                </p>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Countdown</p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums" suppressHydrationWarning>
+                      {mounted && now && schedule.length ? formatDuration(countdown) : "--:--:--"}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-6 text-xs text-muted-foreground">
-                {status?.current ? (
-                  <>
-                    Periode saat ini: <span className="font-medium">{rows.find((r) => r.key === status.current!.key)?.label}</span>
-                  </>
-                ) : (
-                  <>
-                    Periode saat ini: <span className="font-medium">Menjelang Subuh</span>
-                  </>
-                )}
-              </div>
+              <p className="mt-4 text-xs text-muted-foreground">Countdown dihitung hingga waktu sholat berikutnya.</p>
             </div>
           </div>
         </div>
+        <YouTubeLiveStreamEmbed className="mt-6 w-full col-span-12 order-3" videoId={liveVideoId} channelId={liveChannelId} />
       </Container>
     </section>
   );

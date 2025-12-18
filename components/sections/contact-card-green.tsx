@@ -1,10 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/layout/container";
-import { motion, useScroll, useTransform } from "motion/react";
 import { Phone, MessageCircle, Mail, Instagram, Facebook, Youtube } from "lucide-react";
 
 type SocialLinks = {
@@ -13,12 +11,11 @@ type SocialLinks = {
   youtube?: string;
 };
 
-type ContactSectionProps = {
-  brand?: string;
-
+type ContactCardProps = {
   title?: string;
   subtitle?: string;
 
+  placeName?: string;
   addressLines?: string[];
 
   phone?: string;
@@ -29,9 +26,6 @@ type ContactSectionProps = {
 
   mapEmbedUrl: string;
   mapLinkUrl?: string;
-
-  backgroundImageSrc?: string;
-  backgroundImageAlt?: string;
 };
 
 function toWaNumber(input: string) {
@@ -39,9 +33,9 @@ function toWaNumber(input: string) {
 }
 
 export function ContactCard({
-  brand = "Masjid Asy-Syuhada",
-  title = "Kontak & Lokasi",
-  subtitle = "Hubungi kami untuk informasi kegiatan, kerja sama, atau bantuan. Anda juga dapat langsung menuju lokasi melalui Google Maps.",
+  title = "Kontak",
+  subtitle = "Hubungi kami atau kunjungi lokasi masjid.",
+  placeName = "Masjid Asy-Syuhada",
   addressLines = ["2XWJ+H9P, Buliang, Kec. Batu Aji", "Kota Batam, Kepulauan Riau 29424"],
   phone = "+62 812-3456-7890",
   whatsapp = "+62 812-3456-7890",
@@ -53,56 +47,31 @@ export function ContactCard({
   },
   mapEmbedUrl,
   mapLinkUrl = "https://www.google.com/maps?q=Masjid+Asy-Syuhada+Batam",
-  backgroundImageSrc = "/images/contact-bg.jpg",
-  backgroundImageAlt = "Background Masjid",
-}: ContactSectionProps) {
-  const ref = React.useRef<HTMLDivElement | null>(null);
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-
-  // Parallax range (lebih terasa dari sebelumnya)
-  const y = useTransform(scrollYProgress, [0, 1], ["-10%", "10%"]);
-
+}: ContactCardProps) {
   return (
-    <section id="contact" aria-label="Contact" className="py-14 md:py-10 scroll-mt-24">
+    <section id="contact" aria-label="Contact" className="py-14 md:py-20 scroll-mt-24">
       <Container>
-        <div ref={ref} className="relative overflow-hidden rounded-3xl border">
-          {/* Background image (parallax) */}
-          <motion.div className="absolute inset-0 z-0 pointer-events-none" style={{ y }}>
-            <Image
-              src={backgroundImageSrc}
-              alt={backgroundImageAlt}
-              fill
-              sizes="(max-width: 768px) 100vw, 1024px"
-              className="object-cover scale-110 blur-md brightness-75 contrast-110"
-              priority={false}
-            />
-          </motion.div>
+        {/* Background overlay primary only inside container */}
+        <div className="relative overflow-hidden rounded-3xl border">
+          {/* primary overlay */}
+          <div className="absolute inset-0 bg-primary/90" />
+          {/* subtle pattern */}
+          <div className="absolute inset-0 opacity-10 [background:radial-gradient(circle_at_20%_20%,white,transparent_45%),radial-gradient(circle_at_80%_30%,white,transparent_40%),radial-gradient(circle_at_50%_90%,white,transparent_45%)]" />
 
-          {/* Overlay tint (biar gambar tetap terlihat) */}
-          <div className="absolute inset-0 z-10 pointer-events-none bg-linear-to-b from-primary/35 via-primary/55 to-primary/70" />
-
-          {/* Subtle highlight */}
-          <div className="absolute inset-0 z-10 pointer-events-none opacity-10 [background:radial-gradient(circle_at_20%_20%,white,transparent_45%),radial-gradient(circle_at_80%_30%,white,transparent_40%),radial-gradient(circle_at_50%_90%,white,transparent_45%)]" />
-
-          {/* Content */}
-          <div className="relative z-20 p-4 md:p-8">
+          <div className="relative p-4 md:p-8">
             <div className="mb-6">
-              <p className="text-sm font-medium text-primary-foreground/90">{brand}</p>
+              <p className="text-sm font-medium text-primary-foreground/90">Get in touch</p>
               <h2 className="mt-2 text-3xl font-bold tracking-tight text-primary-foreground md:text-4xl">{title}</h2>
-              <p className="mt-3 max-w-2xl text-primary-foreground/80 md:text-lg">{subtitle}</p>
+              <p className="mt-3 text-primary-foreground/80 md:text-lg">{subtitle}</p>
             </div>
 
+            {/* Cards */}
             <div className="grid items-stretch gap-6 md:grid-cols-12">
-              {/* LEFT: Contact card */}
+              {/* Left card */}
               <div className="md:col-span-5">
-                <div className="h-full rounded-2xl border border-primary-foreground/15 bg-background/95 p-6 shadow-sm">
-                  {/* Address */}
+                <div className="h-full rounded-2xl border border-primary-foreground/15 bg-background/95 p-6 text-foreground shadow-sm">
                   <div className="rounded-xl border bg-background p-4">
-                    <p className="text-sm font-semibold">{brand}</p>
+                    <p className="text-sm font-semibold">{placeName}</p>
                     <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                       {addressLines.map((line, idx) => (
                         <p key={idx}>{line}</p>
@@ -110,7 +79,6 @@ export function ContactCard({
                     </div>
                   </div>
 
-                  {/* Contact rows */}
                   <div className="mt-6 space-y-3">
                     {phone ? (
                       <a
@@ -157,10 +125,9 @@ export function ContactCard({
                     ) : null}
                   </div>
 
-                  {/* Social icons */}
                   {socialLinks.instagram || socialLinks.facebook || socialLinks.youtube ? (
                     <div className="mt-6">
-                      <p className="text-xs font-medium text-foreground">Social Media</p>
+                      <p className="text-xs font-medium">Social Media</p>
                       <div className="mt-2 flex items-center gap-2">
                         {socialLinks.instagram ? (
                           <a
@@ -174,6 +141,7 @@ export function ContactCard({
                             <Instagram className="h-4 w-4" />
                           </a>
                         ) : null}
+
                         {socialLinks.facebook ? (
                           <a
                             href={socialLinks.facebook}
@@ -186,6 +154,7 @@ export function ContactCard({
                             <Facebook className="h-4 w-4" />
                           </a>
                         ) : null}
+
                         {socialLinks.youtube ? (
                           <a
                             href={socialLinks.youtube}
@@ -202,7 +171,6 @@ export function ContactCard({
                     </div>
                   ) : null}
 
-                  {/* CTA */}
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Link
                       href={mapLinkUrl}
@@ -227,7 +195,7 @@ export function ContactCard({
                 </div>
               </div>
 
-              {/* RIGHT: Map card (height matches left) */}
+              {/* Right map card (height matches left) */}
               <div className="md:col-span-7">
                 <div className="h-full overflow-hidden rounded-2xl border border-primary-foreground/15 bg-background/95 shadow-sm">
                   <div className="h-full min-h-[260px]">
@@ -242,7 +210,7 @@ export function ContactCard({
                   </div>
                 </div>
 
-                <p className="mt-2 text-xs text-primary-foreground/85">Jika peta tidak muncul, gunakan tombol “Open in Google Maps”.</p>
+                <p className="mt-2 text-xs text-primary-foreground/85">Jika peta tidak muncul, buka melalui tombol “Open in Google Maps”.</p>
               </div>
             </div>
           </div>
