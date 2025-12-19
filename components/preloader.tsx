@@ -2,49 +2,31 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useUiPreloader } from "@/stores/ui-preloader";
 
-type PreloaderProps = {
-  /**
-   * Durasi minimum preloader tampil (ms), supaya tidak "kedip" di koneksi cepat.
-   */
-  minimumMs?: number;
-};
-
-export default function Preloader({ minimumMs = 600 }: PreloaderProps) {
+export default function Preloader() {
   const [visible, setVisible] = React.useState(true);
+  const setPreloaderDone = useUiPreloader((s) => s.setPreloaderDone);
 
   React.useEffect(() => {
-    let cancelled = false;
-    const start = Date.now();
-
-    const finish = () => {
-      const elapsed = Date.now() - start;
-      const remaining = Math.max(0, minimumMs - elapsed);
-
-      window.setTimeout(() => {
-        if (!cancelled) setVisible(false);
-      }, remaining);
+    const onLoad = () => {
+      // beri sedikit jeda jika kamu butuh (optional)
+      setTimeout(() => setVisible(false), 250);
     };
 
-    // Jika document sudah complete saat hydration, langsung “finish”
-    if (document.readyState === "complete") {
-      finish();
-      return () => {
-        cancelled = true;
-      };
-    }
+    if (document.readyState === "complete") onLoad();
+    else window.addEventListener("load", onLoad);
 
-    // Jika belum, tunggu event window load
-    window.addEventListener("load", finish, { once: true });
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("load", finish);
-    };
-  }, [minimumMs]);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence
+      onExitComplete={() => {
+        // gate dibuka setelah preloader benar-benar hilang
+        setPreloaderDone(true);
+      }}
+    >
       {visible ? (
         <motion.div
           key="preloader-overlay"

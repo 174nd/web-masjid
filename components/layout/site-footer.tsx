@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/layout/container";
 import { Phone, MessageCircle, Mail, Instagram, Facebook, Youtube } from "lucide-react";
+import { RevealGroup, RevealItem } from "../motion/reveal";
 
 type SocialLinks = {
   instagram?: string;
@@ -37,7 +38,7 @@ export function SiteFooter({
   description = "Masjid Asy-Syuhada adalah pusat ibadah, dakwah, dan kegiatan sosial untuk jamaah di wilayah Batam. Mari bersama memakmurkan masjid dengan shalat berjamaah, kajian, dan program kemaslahatan.",
   logoSrc = "/images/logo.png",
   quickLinks = [
-    { label: "Beranda", href: "/#main" },
+    { label: "Beranda", href: "/" },
     { label: "About", href: "/#about" },
     { label: "Infak", href: "/#infak" },
     { label: "Jadwal Sholat", href: "/#prayer-times" },
@@ -60,21 +61,21 @@ export function SiteFooter({
   return (
     <footer className="bg-background">
       {/* MAIN */}
-      <div className="border-t">
-        <Container>
+      <Container className="border-t">
+        <RevealGroup>
           <div className="grid gap-10 py-12 md:grid-cols-12">
             {/* 1) Brand */}
-            <div className="md:col-span-4">
+            <RevealItem className="md:col-span-4">
               <Link href="/" className="inline-flex items-center gap-2 font-semibold">
                 <Image src={logoSrc} alt={`${brand} logo`} width={40} height={40} priority />
                 <span>{brand}</span>
               </Link>
 
               <p className="mt-4 text-sm text-muted-foreground">{description}</p>
-            </div>
+            </RevealItem>
 
             {/* 2) Quick Links */}
-            <div className="md:col-span-2">
+            <RevealItem className="md:col-span-2">
               <p className="text-sm font-semibold">Quick Links</p>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 {quickLinks.map((l) => (
@@ -85,10 +86,10 @@ export function SiteFooter({
                   </li>
                 ))}
               </ul>
-            </div>
+            </RevealItem>
 
             {/* 3) Kontak Kami (disamakan dengan topbar) */}
-            <div className="md:col-span-3">
+            <RevealItem className="md:col-span-3">
               <p className="text-sm font-semibold">Kontak Kami</p>
 
               <div className="mt-4 space-y-4 text-sm text-muted-foreground">
@@ -183,10 +184,10 @@ export function SiteFooter({
                   </div>
                 ) : null}
               </div>
-            </div>
+            </RevealItem>
 
             {/* 4) Maps */}
-            <div className="md:col-span-3">
+            <RevealItem className="md:col-span-3">
               <p className="text-sm font-semibold">Lokasi</p>
 
               {/* Alamat */}
@@ -215,29 +216,27 @@ export function SiteFooter({
               >
                 Open in Google Maps
               </Link>
-            </div>
+            </RevealItem>
           </div>
-        </Container>
-      </div>
+        </RevealGroup>
+      </Container>
 
       {/* BOTTOM BAR */}
-      <div className="bg-primary">
-        <Container>
-          <div className="flex flex-col gap-3 py-5 text-xs text-primary-foreground/90 md:flex-row md:items-center md:justify-between">
-            <p>
-              © {year} {brand}. All rights reserved.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link href="/privacy" className="hover:text-primary-foreground">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-primary-foreground">
-                Terms
-              </Link>
-            </div>
+      <Container className="bg-primary">
+        <div className="flex flex-col gap-3 py-5 text-xs text-primary-foreground/90 md:flex-row md:items-center md:justify-between">
+          <p>
+            © {year} {brand}. All rights reserved.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <Link href="/privacy" className="hover:text-primary-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-primary-foreground">
+              Terms
+            </Link>
           </div>
-        </Container>
-      </div>
+        </div>
+      </Container>
     </footer>
   );
 }

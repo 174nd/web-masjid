@@ -5,6 +5,7 @@ import Preloader from "@/components/preloader";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Dosis, Oswald, Mr_Dafoe } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { AppShell } from "@/components/layout/app-shell";
 
 const dosis = Dosis({
   subsets: ["latin"],
@@ -28,18 +29,43 @@ const mrDafoe = Mr_Dafoe({
   weight: "400", // Mr Dafoe umumnya cuma 400
 });
 
+export const metadata: Metadata = {
+  metadataBase: new URL("https://DOMAINKAMU.COM"), // ganti domain
+  title: {
+    default: "Masjid Asy-Syuhada Batam",
+    template: "%s | Masjid Asy-Syuhada Batam",
+  },
+  description: "Informasi kegiatan, jadwal sholat, infak & pengeluaran, serta kontak Masjid Asy-Syuhada Batam.",
+  applicationName: "Masjid Asy-Syuhada",
+  keywords: ["Masjid", "Batam", "Jadwal Sholat", "Infak", "Kajian"],
+  openGraph: {
+    type: "website",
+    url: "/",
+    title: "Masjid Asy-Syuhada Batam",
+    description: "Informasi kegiatan, jadwal sholat, infak & pengeluaran, serta kontak Masjid Asy-Syuhada Batam.",
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Masjid Asy-Syuhada" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Masjid Asy-Syuhada Batam",
+    description: "Informasi kegiatan, jadwal sholat, infak & pengeluaran, serta kontak Masjid Asy-Syuhada Batam.",
+    images: ["/og.jpg"],
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="id">
       <body className={`${dosis.variable} ${oswald.variable} ${mrDafoe.variable} antialiased`}>
-        <Preloader />
-        <SiteHeader />
-        <main id="main">{children}</main>
-        <SiteFooter mapEmbedUrl="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127652.89152841926!2d103.82851849726562!3d1.0464731999999919!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31d98dbe3265b639%3A0xd01b0d815c36ae0a!2sMasjid%20Asy-Syuhada!5e0!3m2!1sid!2sid!4v1765951360338!5m2!1sid!2sid" />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Container } from "@/components/layout/container";
+import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 
 export type NewsItem = {
   id: string;
@@ -163,102 +164,113 @@ export function NewsRotating({
   // Spring untuk reorder list kanan
   const spring = { type: "spring" as const, stiffness: 320, damping: 34, mass: 0.9 };
 
+  // underline anim like navbar (right -> left)
+  const seeAllClass =
+    "relative pb-1 text-sm text-muted-foreground hover:text-foreground " +
+    "after:absolute after:left-0 after:bottom-0 after:h-[2px] after:w-full after:bg-primary " +
+    "after:origin-right after:scale-x-0 after:transition-transform after:duration-300 " +
+    "hover:after:origin-left hover:after:scale-x-100";
+
   return (
-    <section id="news" aria-label="News" className="py-14 md:py-10">
+    <section id="news" aria-label="News" className="py-14 md:py-10 scroll-mt-24">
       <Container>
-        <div className="flex items-end justify-between gap-6">
-          <div>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
-              <span className="text-primary">Berita</span> & Artikel
-            </h2>
-          </div>
+        <RevealGroup>
+          {/* Header row reveal */}
+          <RevealItem>
+            <div className="flex items-end justify-between gap-6">
+              <div>
+                <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+                  <span className="text-primary">Berita</span> & Artikel
+                </h2>
+              </div>
 
-          <Link href="/news" className="text-sm text-muted-foreground hover:text-foreground">
-            Lihat Semua
-          </Link>
-        </div>
-
-        {/* LOCK tinggi agar section bawah tidak bergerak */}
-        <div ref={lockRef} className="mt-8" style={locked ? { height: locked, overflow: "hidden" } : { minHeight: 520 }}>
-          <div className="grid gap-6 md:grid-cols-12">
-            {/* LEFT: Featured (fade-only) */}
-            <div className="md:col-span-7">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.article
-                  key={featured.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.35, ease: "easeOut" }}
-                  className="relative overflow-hidden rounded-2xl border bg-background"
-                >
-                  <Link href={featured.href} className="block">
-                    <div className="relative aspect-16/10 w-full">
-                      <Image
-                        src={featured.imageUrl}
-                        alt={featured.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 640px"
-                        priority
-                      />
-                      <div className="absolute inset-0 bg-linear-to-t from-background/80 via-background/10 to-transparent" />
-                    </div>
-
-                    <div className="p-6">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {featured.category ? <span className="rounded-md border px-2 py-0.5">{featured.category}</span> : null}
-                        <span>{formatDate(featured.date)}</span>
-                      </div>
-
-                      {/* Jika kamu tidak punya line-clamp, ganti dengan max-h + overflow-hidden */}
-                      <h3 className="mt-3 line-clamp-2 text-xl font-semibold tracking-tight md:text-2xl">{featured.title}</h3>
-                      <p className="mt-2 line-clamp-3 text-sm text-muted-foreground md:text-base">{featured.excerpt}</p>
-                    </div>
-                  </Link>
-                </motion.article>
-              </AnimatePresence>
+              <Link href="/news" className={seeAllClass}>
+                Lihat Semua
+              </Link>
             </div>
+          </RevealItem>
 
-            {/* RIGHT: List (reorder smooth) */}
-            <div className="md:col-span-5">
-              <div className="space-y-3">
-                <AnimatePresence initial={false}>
-                  {list.map((item) => (
+          {/* LOCK tinggi agar section bawah tidak bergerak */}
+          <RevealItem>
+            <div ref={lockRef} className="mt-8" style={locked ? { height: locked, overflow: "hidden" } : { minHeight: 520 }}>
+              <div className="grid gap-6 md:grid-cols-12">
+                {/* LEFT: Featured (fade-only) */}
+                <div className="md:col-span-7">
+                  <AnimatePresence mode="wait" initial={false}>
                     <motion.article
-                      key={item.id}
-                      layout
-                      transition={spring}
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      className="overflow-hidden rounded-xl border bg-background"
+                      key={featured.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35, ease: "easeOut" }}
+                      className="relative overflow-hidden rounded-2xl border bg-background transition-colors duration-200 hover:border-primary"
                     >
-                      <Link href={item.href} className="flex gap-3 p-3">
-                        <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
-                          <Image src={item.imageUrl} alt={item.title} fill className="object-cover" sizes="80px" />
+                      <Link href={featured.href} className="block">
+                        <div className="relative aspect-16/10 w-full">
+                          <Image
+                            src={featured.imageUrl}
+                            alt={featured.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 640px"
+                            priority
+                          />
+                          <div className="absolute inset-0 bg-linear-to-t from-background/80 via-background/10 to-transparent" />
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="p-6">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {item.category ? <span>{item.category}</span> : null}
-                            <span className="opacity-70">•</span>
-                            <span>{formatDate(item.date)}</span>
+                            {featured.category ? <span className="rounded-md border px-2 py-0.5">{featured.category}</span> : null}
+                            <span>{formatDate(featured.date)}</span>
                           </div>
 
-                          <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">{item.title}</h4>
-                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.excerpt}</p>
+                          <h3 className="mt-3 line-clamp-2 text-xl font-semibold tracking-tight md:text-2xl">{featured.title}</h3>
+                          <p className="mt-2 line-clamp-3 text-sm text-muted-foreground md:text-base">{featured.excerpt}</p>
                         </div>
                       </Link>
                     </motion.article>
-                  ))}
-                </AnimatePresence>
-              </div>
+                  </AnimatePresence>
+                </div>
 
-              {/* <p className="mt-4 text-xs text-muted-foreground">Auto-rotates every {Math.round(intervalMs / 1000)}s.</p> */}
+                {/* RIGHT: List (reorder smooth) */}
+                <div className="md:col-span-5">
+                  <div className="space-y-3">
+                    <AnimatePresence initial={false}>
+                      {list.map((item) => (
+                        <motion.article
+                          key={item.id}
+                          layout
+                          transition={spring}
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="overflow-hidden rounded-xl border bg-background transition-colors duration-200 hover:border-primary"
+                        >
+                          <Link href={item.href} className="flex gap-3 p-3">
+                            <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
+                              <Image src={item.imageUrl} alt={item.title} fill className="object-cover" sizes="80px" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {item.category ? <span>{item.category}</span> : null}
+                                <span className="opacity-70">•</span>
+                                <span>{formatDate(item.date)}</span>
+                              </div>
+
+                              <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">{item.title}</h4>
+                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.excerpt}</p>
+                            </div>
+                          </Link>
+                        </motion.article>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </RevealItem>
+        </RevealGroup>
       </Container>
     </section>
   );

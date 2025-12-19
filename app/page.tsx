@@ -5,9 +5,27 @@ import { NewsRotating } from "@/components/sections/news-rotating";
 import { PrayerTimesBatam } from "@/components/sections/prayer-times-batam";
 import { ContactCard } from "@/components/sections/contact-card";
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Place",
+  name: "Masjid Asy-Syuhada",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Buliang, Kec. Batu Aji",
+    addressLocality: "Kota Batam",
+    addressRegion: "Kepulauan Riau",
+    postalCode: "29424",
+    addressCountry: "ID",
+  },
+  telephone: "+62 812-3456-7890",
+  url: "https://DOMAINKAMU.COM",
+  sameAs: ["https://instagram.com/USERNAME_MASJID", "https://facebook.com/PAGE_MASJID", "https://youtube.com/@CHANNEL_MASJID"],
+};
+
 export default function HomePage() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Hero cycleMs={6500} />
       <AboutUs />
       <NewsRotating intervalMs={6500} maxList={4} />

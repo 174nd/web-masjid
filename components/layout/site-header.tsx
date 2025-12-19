@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { AnimatePresence, motion } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
+import { AnimatePresence, easeOut, motion } from "motion/react";
 import { Menu, X, Phone, MessageCircle, Mail, Instagram, Facebook, Youtube } from "lucide-react";
 
 import { Container } from "@/components/layout/container";
@@ -12,7 +13,7 @@ import { Button } from "@/components/ui/button";
 type NavItem = { href: string; label: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/#main", label: "Beranda" },
+  { href: "/", label: "Beranda" },
   { href: "/yayasan", label: "Yayasan" },
   { href: "/dkm", label: "DKM (Pengurus)" },
   { href: "/tpq", label: "TPQ" },
@@ -38,11 +39,19 @@ const mobileLinkUnderlineClass =
   "after:scale-x-0 after:origin-right hover:after:scale-x-100 hover:after:origin-left " +
   "after:transition-transform after:duration-300 after:ease-out";
 
-const topbarLinkClass =
-  "relative pb-0.5 text-xs text-primary-foreground/90 hover:text-primary-foreground " +
-  "after:absolute after:left-0 after:bottom-0 after:h-[2px] after:w-full after:bg-primary-foreground " +
-  "after:scale-x-0 after:origin-right hover:after:scale-x-100 hover:after:origin-left " +
-  "after:transition-transform after:duration-300 after:ease-out";
+const navContainer = {
+  hidden: { opacity: 0, y: -8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: easeOut, staggerChildren: 0.06 },
+  },
+};
+
+const navItem = {
+  hidden: { opacity: 0, y: -6 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: easeOut } },
+};
 
 function getHashId(href: string) {
   // support "#contact" dan "/#contact"
@@ -63,6 +72,9 @@ function scrollToSection(id: string, headerOffsetPx: number) {
 }
 
 export function SiteHeader() {
+  const pathname = usePathname();
+  const router = useRouter();
+
   const [topBarVisible, setTopBarVisible] = React.useState(true);
   const [borderPrimary, setBorderPrimary] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -70,12 +82,13 @@ export function SiteHeader() {
   const [activeId, setActiveId] = React.useState<string>("main");
   const [mounted, setMounted] = React.useState(false);
 
+  // track section visibility (agar "Contak" aktif hanya ketika section-nya terlihat)
+  const [inViewMap, setInViewMap] = React.useState<Record<string, boolean>>({});
+
   React.useEffect(() => {
     setMounted(true);
-
-    // Setelah mount, baru sync dari hash kalau ada
-    const hash = window.location.hash.replace("#", "");
-    if (hash) setActiveId(hash);
+    // Penting: jangan setActiveId dari hash di sini,
+    // karena active diminta hanya saat section terlihat.
   }, []);
 
   const prevTopBarVisibleRef = React.useRef(true);
@@ -84,6 +97,9 @@ export function SiteHeader() {
   // Programmatic scroll guard
   const programmaticScrollRef = React.useRef(false);
   const programmaticTimerRef = React.useRef<number | null>(null);
+
+  // hash yang perlu di-scroll setelah pindah route
+  const pendingHashRef = React.useRef<string>("");
 
   const markProgrammaticScroll = React.useCallback(() => {
     programmaticScrollRef.current = true;
@@ -166,16 +182,60 @@ export function SiteHeader() {
   }, [mobileOpen]);
 
   /**
-   * Scroll spy (POS-based):
-   * Active = section yang sedang “meng-cover” garis referensi tepat di bawah header.
-   * Jika dekat atas, paksa active "main".
+   * Track "in view" untuk section (khususnya contact).
+   * Active untuk link hash akan bergantung pada inViewMap[id] === true.
    */
   React.useEffect(() => {
+    if (!mounted) return;
+    if (pathname !== "/") {
+      setInViewMap({});
+      setActiveId("main");
+      return;
+    }
+
     const ids = ["main", ...NAV_ITEMS.map((n) => getHashId(n.href)).filter(Boolean)];
     const uniqueIds = Array.from(new Set(ids));
 
     const els = uniqueIds.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
 
+    if (!els.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setInViewMap((prev) => {
+          const next = { ...prev };
+          for (const entry of entries) {
+            next[entry.target.id] = entry.isIntersecting;
+          }
+          return next;
+        });
+      },
+      {
+        // section dianggap "terlihat" jika cukup masuk viewport
+        threshold: 0.35,
+        rootMargin: "0px 0px -10% 0px",
+      }
+    );
+
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [mounted, pathname]);
+
+  /**
+   * Scroll spy (POS-based):
+   * - Tetap menentukan activeId berdasar posisi, tapi hanya berjalan di "/"
+   * - Active UI untuk link hash tetap bergantung pada inViewMap (agar "Contak" tidak aktif kalau tidak terlihat)
+   */
+  React.useEffect(() => {
+    if (pathname !== "/") {
+      setActiveId("main");
+      return;
+    }
+
+    const ids = ["main", ...NAV_ITEMS.map((n) => getHashId(n.href)).filter(Boolean)];
+    const uniqueIds = Array.from(new Set(ids));
+
+    const els = uniqueIds.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     if (!els.length) return;
 
     let raf = 0;
@@ -191,10 +251,6 @@ export function SiteHeader() {
       const headerOffset = getHeaderOffset();
       const anchorY = headerOffset + 8; // garis referensi tepat di bawah header
 
-      // Pilih section yang posisi top-nya paling dekat ke anchorY
-      // Aturan:
-      // - Jika anchorY berada di dalam section (top <= anchorY < bottom) => prioritas utama
-      // - Jika tidak ada, ambil yang top-nya paling dekat (berdasarkan abs(top - anchorY))
       let bestId = "main";
       let bestScore = Number.POSITIVE_INFINITY;
       let bestInside = false;
@@ -203,17 +259,9 @@ export function SiteHeader() {
         const rect = el.getBoundingClientRect();
         const inside = rect.top <= anchorY && rect.bottom > anchorY;
 
-        // Score untuk inside: pakai jarak kecil agar selalu menang
-        // Score untuk non-inside: jarak absolut dari top ke anchor
         const score = inside ? Math.abs(rect.top - anchorY) : Math.abs(rect.top - anchorY) + 2000;
 
-        if (
-          score < bestScore ||
-          // kalau sama-sama inside, pilih yang lebih dekat
-          (inside && bestInside && score < bestScore) ||
-          // kalau best sebelumnya non-inside tapi sekarang inside, pilih inside
-          (inside && !bestInside)
-        ) {
+        if (score < bestScore || (inside && !bestInside)) {
           bestInside = inside;
           bestScore = score;
           bestId = el.id;
@@ -233,30 +281,60 @@ export function SiteHeader() {
       raf = requestAnimationFrame(computeActive);
     };
 
-    const onHashChange = () => {
-      const hash = window.location.hash.replace("#", "");
-      if (hash) setActiveId(hash);
-      else setActiveId("main");
-      onScroll();
-    };
-
     computeActive();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
-    window.addEventListener("hashchange", onHashChange);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("hashchange", onHashChange);
     };
-  }, [getHeaderOffset]);
+  }, [getHeaderOffset, pathname]);
+
+  /**
+   * Setelah pindah ke "/" dengan hash (contoh dari halaman lain klik /#contact),
+   * lakukan scroll offset-aware.
+   */
+  React.useEffect(() => {
+    if (!mounted) return;
+    if (pathname !== "/") return;
+
+    const hash = pendingHashRef.current || window.location.hash.replace("#", "");
+    if (!hash) return;
+
+    // reset pending agar tidak looping
+    pendingHashRef.current = "";
+
+    // close mobile panel kalau masih kebuka
+    setMobileOpen(false);
+
+    // jika topbar masih visible, collapse dulu, lalu scroll
+    if (topBarVisible) {
+      markProgrammaticScroll();
+      setTopBarVisible(false);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const offset = getHeaderOffset();
+          scrollToSection(hash, offset);
+        });
+      });
+
+      return;
+    }
+
+    markProgrammaticScroll();
+    requestAnimationFrame(() => {
+      const offset = getHeaderOffset();
+      scrollToSection(hash, offset);
+    });
+  }, [mounted, pathname, topBarVisible, getHeaderOffset, markProgrammaticScroll]);
 
   const handleNavClick = (href: string) => (e: React.MouseEvent) => {
     const id = getHashId(href);
 
-    // Jika tidak ada hash, biarkan navigasi normal (pindah halaman)
+    // Jika tidak ada hash: biarkan navigasi normal (pindah halaman)
     if (!id) return;
 
     e.preventDefault();
@@ -264,8 +342,14 @@ export function SiteHeader() {
     // close mobile panel
     setMobileOpen(false);
 
-    // 1-click behavior:
-    // kalau topbar masih visible, collapse dulu lalu scroll setelah layout berubah
+    // Kalau sedang di halaman selain "/", navigasi ke "/" dulu lalu scroll
+    if (pathname !== "/") {
+      pendingHashRef.current = id;
+      router.push(`/#${id}`);
+      return;
+    }
+
+    // di halaman "/" => scroll offset-aware seperti sebelumnya
     if (topBarVisible) {
       markProgrammaticScroll();
       setTopBarVisible(false);
@@ -274,7 +358,6 @@ export function SiteHeader() {
         requestAnimationFrame(() => {
           const offset = getHeaderOffset();
           scrollToSection(id, offset);
-          setActiveId(id);
         });
       });
 
@@ -284,31 +367,42 @@ export function SiteHeader() {
     markProgrammaticScroll();
     const offset = getHeaderOffset();
     scrollToSection(id, offset);
-    setActiveId(id);
   };
 
   const desktopLinkClass = (href: string) => {
     const id = getHashId(href);
-    const isActive = mounted && id ? activeId === id : false;
+    const normalize = (p: string) => (p.length > 1 ? p.replace(/\/+$/, "") : p);
+
+    // route biasa (tanpa hash) => active berdasarkan pathname
+    if (!id) {
+      const isActive = mounted ? normalize(pathname) === normalize(href) : false;
+      return [linkUnderlineClass, isActive ? "font-semibold text-foreground after:scale-x-100 after:origin-left" : ""].join(" ");
+    }
+
+    // hash => active hanya jika:
+    // - di halaman "/" dan
+    // - section benar-benar terlihat (inViewMap)
+    const isActive = mounted && pathname === "/" && inViewMap[id] === true;
 
     return [linkUnderlineClass, isActive ? "font-semibold text-foreground after:scale-x-100 after:origin-left" : ""].join(" ");
   };
 
   const mobileLinkClass = (href: string) => {
     const id = getHashId(href);
-    const isActive = mounted && id ? activeId === id : false;
+    const normalize = (p: string) => (p.length > 1 ? p.replace(/\/+$/, "") : p);
+
+    if (!id) {
+      const isActive = mounted ? normalize(pathname) === normalize(href) : false;
+      return [mobileLinkUnderlineClass, isActive ? "font-semibold text-foreground after:scale-x-100 after:origin-left" : ""].join(" ");
+    }
+
+    const isActive = mounted && pathname === "/" && inViewMap[id] === true;
 
     return [mobileLinkUnderlineClass, isActive ? "font-semibold text-foreground after:scale-x-100 after:origin-left" : ""].join(" ");
   };
 
   return (
-    <motion.header
-      ref={headerRef}
-      className="sticky top-0 z-50 w-full py-2"
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-    >
+    <motion.header ref={headerRef} className="sticky top-0 z-50 w-full py-2" initial="hidden" animate="show" variants={navContainer}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-60 rounded-md border bg-background px-3 py-2 text-sm"
@@ -414,9 +508,7 @@ export function SiteHeader() {
         <Container>
           <div className="relative">
             <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut", delay: 0.05 }}
+              variants={navItem}
               className={[
                 "flex h-16 items-center border bg-background/80 backdrop-blur",
                 "supports-backdrop-filter:bg-background/80",
@@ -433,13 +525,20 @@ export function SiteHeader() {
                 <div className="flex-1" />
 
                 {/* Desktop */}
-                <div className="hidden items-center gap-4 md:flex">
+                <></>
+                <motion.nav aria-label="Primary" className="hidden items-center gap-4 md:flex" variants={navItem}>
                   {NAV_ITEMS.map((item) => (
-                    <a key={item.href} href={item.href} className={desktopLinkClass(item.href)} onClick={handleNavClick(item.href)}>
+                    <motion.a
+                      key={item.href}
+                      href={item.href}
+                      variants={navItem}
+                      className={desktopLinkClass(item.href)}
+                      onClick={handleNavClick(item.href)}
+                    >
                       {item.label}
-                    </a>
+                    </motion.a>
                   ))}
-                </div>
+                </motion.nav>
 
                 {/* Mobile toggle */}
                 <div className="md:hidden">
@@ -484,13 +583,15 @@ export function SiteHeader() {
                       Sign in
                     </Link>
 
-                    {/* CTA Contact (tetap scroll 1x klik) */}
+                    {/* CTA Contact (aktif hanya jika section contact terlihat) */}
                     <a
                       href="/#contact"
                       onClick={handleNavClick("/#contact")}
                       className={[
                         "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium",
-                        activeId === "contact" ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground hover:opacity-90",
+                        mounted && pathname === "/" && inViewMap["contact"] === true
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-primary text-primary-foreground hover:opacity-90",
                       ].join(" ")}
                     >
                       Contact
