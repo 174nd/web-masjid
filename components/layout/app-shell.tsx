@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Preloader from "@/components/preloader";
+import PublicPreloader from "@/components/preloader/public-preloader";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { useUiPreloader } from "@/stores/ui-preloader";
@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* Preloader ALWAYS mounted first and on top */}
-      <Preloader />
+      <PublicPreloader />
 
       {/* Render the rest only when preloader is done */}
       {done ? (

@@ -15,8 +15,9 @@ type NavItem = { href: string; label: string };
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Beranda" },
   { href: "/yayasan", label: "Yayasan" },
-  { href: "/dkm", label: "DKM (Pengurus)" },
+  { href: "/dkm", label: "Pengurus" },
   { href: "/tpq", label: "TPQ" },
+  { href: "/news", label: "Berita" },
   { href: "/#contact", label: "Contak" },
 ];
 
@@ -574,28 +575,6 @@ export function SiteHeader() {
                         {item.label}
                       </a>
                     ))}
-                  </div>
-
-                  <div className="my-4 h-px w-full bg-border" />
-
-                  <div className="flex flex-col gap-3">
-                    <Link href="/login" className={mobileLinkUnderlineClass} onClick={() => setMobileOpen(false)}>
-                      Sign in
-                    </Link>
-
-                    {/* CTA Contact (aktif hanya jika section contact terlihat) */}
-                    <a
-                      href="/#contact"
-                      onClick={handleNavClick("/#contact")}
-                      className={[
-                        "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium",
-                        mounted && pathname === "/" && inViewMap["contact"] === true
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-primary text-primary-foreground hover:opacity-90",
-                      ].join(" ")}
-                    >
-                      Contact
-                    </a>
                   </div>
                 </motion.div>
               ) : null}

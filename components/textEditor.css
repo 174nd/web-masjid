@@ -1,0 +1,667 @@
+/* TipTap editor styles aligned with shadcn/ui Input
+   - Uses CSS variables from global.css (e.g. --primary, --ring, --border, etc.)
+   - Plain CSS (no SCSS) for easier maintenance
+*/
+
+.text-editor {
+  position: relative;
+  border-radius: var(--radius-md, calc(var(--radius) - 2px));
+  overflow: visible;
+}
+
+.text-editor__content {
+  border-color: transparent;
+  outline: none;
+}
+
+.text-editor__file-input {
+  display: none;
+}
+
+.text-editor__content > *:first-child {
+  margin-top: 0;
+}
+
+.text-editor__content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Bubble menu (desktop only, gated in TSX) */
+.bubble-menu {
+  border: 1px solid oklch(from var(--border) l c h / 0.8);
+  display: inline-flex;
+  background: oklch(from var(--popover) l c h / 0.92);
+  color: var(--popover-foreground);
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  box-shadow: 0 10px 20px -12px oklch(from var(--foreground) l c h / 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.bubble-menu__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.bubble-menu button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+  position: relative;
+}
+
+.bubble-menu button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bubble-menu button[data-text-color-active="true"]::after {
+  content: "";
+  display: inline-flex;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-left: 0.4rem;
+  border-radius: 9999px;
+  background: var(--text-color-chip, currentColor);
+  box-shadow: 0 0 0 1px oklch(from var(--border) l c h / 0.9);
+}
+
+.bubble-menu button[data-highlight-active="true"]::before {
+  content: "";
+  display: inline-flex;
+  width: 0.9rem;
+  height: 0.4rem;
+  margin-right: 0.35rem;
+  border-radius: 0.35rem;
+  background: var(--highlight-color-chip, oklch(from var(--primary) l c h / 0.3));
+  box-shadow: 0 0 0 1px oklch(from var(--border) l c h / 0.9);
+}
+
+.bubble-menu button:hover {
+  background: oklch(from var(--primary) l c h / 0.14);
+}
+
+.bubble-menu button.is-active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.bubble-menu__dropdown {
+  min-width: 180px;
+  padding: 0.35rem 0;
+  background: oklch(from var(--popover) l c h / 0.92);
+  color: var(--popover-foreground);
+  border-radius: 0.75rem;
+  border: 1px solid oklch(from var(--border) l c h / 0.8);
+  box-shadow: 0 24px 48px -24px oklch(from var(--foreground) l c h / 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.bubble-menu__dropdown--colors {
+  min-width: 220px;
+  padding: 0.45rem 0.4rem 0.5rem;
+}
+
+.bubble-menu__dropdown-label {
+  padding: 0.2rem 0.35rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: oklch(from var(--muted-foreground) l c h / 1);
+}
+
+.bubble-menu__color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem 0.4rem;
+}
+
+.bubble-menu__dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.bubble-menu__dropdown-item[data-highlighted="true"],
+.bubble-menu__dropdown-item[data-state="checked"],
+.bubble-menu__dropdown-item[data-active="true"] {
+  background: oklch(from var(--primary) l c h / 0.22);
+  color: var(--background);
+}
+
+.bubble-menu__dropdown-item[data-disabled="true"] {
+  color: oklch(from var(--muted-foreground) l c h / 0.6);
+  cursor: not-allowed;
+}
+
+.bubble-menu__dropdown-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-menu__dropdown-separator {
+  height: 1px;
+  background: oklch(from var(--border) l c h / 0.7);
+  margin: 0.35rem 0;
+}
+
+/* Image resizer menu */
+.bubble-menu--image {
+  gap: 0.75rem;
+}
+
+.image-resizer-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.image-resizer-menu__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--popover-foreground);
+}
+
+.image-resizer-menu__slider {
+  display: inline-flex;
+  align-items: center;
+  width: 160px;
+  height: 22px;
+  user-select: none;
+  touch-action: none;
+  position: relative;
+  padding: 0 9px;
+  box-sizing: border-box;
+}
+
+.image-resizer-menu__track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: oklch(from var(--muted) l c h / 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.image-resizer-menu__range {
+  position: absolute;
+  height: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+}
+
+.image-resizer-menu__thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: var(--background);
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 4px 10px -4px oklch(from var(--primary) l c h / 0.35);
+  outline: none;
+}
+
+.image-resizer-menu__thumb:focus-visible {
+  box-shadow: 0 0 0 2px oklch(from var(--background) l c h / 1), 0 0 0 5px oklch(from var(--ring) l c h / 0.55);
+}
+
+.image-resizer-menu__alt {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--popover-foreground);
+  background: oklch(from var(--primary) l c h / 0.12);
+  border: 1px solid oklch(from var(--border) l c h / 0.85);
+}
+
+.image-resizer-menu__alt:hover {
+  background: oklch(from var(--primary) l c h / 0.18);
+}
+
+.image-resizer-menu__alt:focus-visible {
+  box-shadow: 0 0 0 2px oklch(from var(--background) l c h / 1), 0 0 0 5px oklch(from var(--ring) l c h / 0.55);
+}
+
+.image-resizer-menu__alt[data-active="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+.image-resizer-menu__alt-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Slash command list (tippy content) */
+.slash-command {
+  /* width: min(360px, calc(100vw - 32px)); */
+  max-width: min(360px, calc(100vw - 32px));
+  max-height: min(320px, calc(100vh - 140px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.35rem;
+  background: oklch(from var(--popover) l c h / 0.96);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 18px 40px -28px oklch(from var(--foreground) l c h / 0.35);
+}
+
+.slash-command__item {
+  all: unset;
+  display: flex;
+  gap: 0.65rem;
+  width: 100%;
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.55rem;
+  cursor: pointer;
+}
+
+.slash-command__item.is-active,
+.slash-command__item:hover {
+  background: oklch(from var(--primary) l c h / 0.12);
+}
+
+.slash-command__item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(from var(--muted) l c h / 0.6);
+  color: var(--foreground);
+}
+
+.slash-command__item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.slash-command__item-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.slash-command__item-description {
+  font-size: 0.7rem;
+  opacity: 0.65;
+}
+
+@media (max-width: 640px) {
+  .slash-command {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    margin: 0 auto;
+  }
+}
+
+.slash-command__empty {
+  padding: 0.45rem 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+
+/* Drag handle (desktop only, gated in TSX)
+   Adjusted to be comfortably inside the editor padding and centered around the first line. */
+.text-editor .drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem;
+  background: oklch(from var(--popover) l c h / 0.92);
+  color: var(--foreground);
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 28px -18px oklch(from var(--border) l c h / 0.9);
+  margin-left: 0;
+  transform: translateX(-10px);
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.drag-handle__button {
+  all: unset;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  cursor: grab;
+  pointer-events: auto;
+  border-radius: 0.4rem;
+}
+
+.drag-handle__button:hover {
+  background: oklch(from var(--primary) l c h / 0.1);
+  color: var(--primary);
+}
+
+.drag-handle__button:active {
+  cursor: grabbing;
+}
+
+/* TipTap content styling */
+.tiptap.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Selection like shadcn Input (bg-primary + primary-foreground) */
+.tiptap ::selection,
+.tiptap::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.tiptap a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.tiptap a:hover {
+  opacity: 0.9;
+}
+
+.tiptap.preview p:empty::before {
+  content: "\00a0";
+  display: inline-block;
+}
+
+.tiptap > * + * {
+  margin-top: 0.75rem;
+}
+
+.tiptap h1,
+.tiptap h2,
+.tiptap h3,
+.tiptap h4,
+.tiptap h5,
+.tiptap h6 {
+  line-height: 1.1;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap .editor-heading {
+  line-height: 1.1;
+}
+
+.tiptap h1 {
+  font-size: clamp(2rem, 4vw, 2.5rem);
+}
+
+.tiptap h2 {
+  font-size: clamp(1.75rem, 3.25vw, 2.15rem);
+}
+
+.tiptap h3 {
+  font-size: clamp(1.5rem, 2.75vw, 1.85rem);
+}
+
+.tiptap p {
+  margin: 0 0 0.75rem;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.5rem;
+}
+
+.tiptap ul {
+  list-style: disc;
+}
+
+.tiptap ol {
+  list-style: decimal;
+}
+
+.tiptap li + li {
+  margin-top: 0.35rem;
+}
+
+.tiptap code {
+  background: oklch(from var(--primary) l c h / 0.12);
+  color: var(--primary);
+  font-size: 0.95em;
+  border-radius: 0.375rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.tiptap pre {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 0.95em;
+}
+
+.tiptap blockquote {
+  border-left: 4px solid var(--primary);
+  margin: 1rem 0;
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+/* Image block (figure + figcaption) for SEO-friendly captions */
+.tiptap figure[data-type="image-block"],
+.tiptap .editor-image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem auto;
+  max-width: 100%;
+}
+
+.tiptap figure[data-type="image-block"] img,
+.tiptap .editor-image-block img,
+.tiptap .editor-image {
+  max-width: 100%;
+  height: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 0.75rem;
+}
+
+.tiptap figure[data-type="image-block"] figcaption,
+.tiptap .editor-image-caption {
+  width: 100%;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 0.85em;
+  line-height: 1.35;
+  font-style: italic;
+}
+
+.tiptap .editor-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1rem auto;
+  text-align: center;
+}
+
+.tiptap .tableWrapper {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 30px -24px oklch(from var(--border) l c h / 0.9);
+}
+
+.tiptap table,
+.tiptap .editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.tiptap th.editor-table__header {
+  background: oklch(from var(--muted) l c h / 0.6);
+  font-weight: 600;
+  text-align: left;
+}
+
+.tiptap td.editor-table__cell,
+.tiptap th.editor-table__header {
+  border: 1px solid var(--border);
+  padding: 0.65rem 0.85rem;
+  vertical-align: top;
+  position: relative;
+}
+
+.tiptap td.editor-table__cell p,
+.tiptap th.editor-table__header p {
+  margin: 0;
+}
+
+.tiptap tr:nth-child(even) td.editor-table__cell {
+  background: oklch(from var(--muted) l c h / 0.25);
+}
+
+.tiptap .selectedCell {
+  position: relative;
+  box-shadow: inset 0 0 0 2px var(--primary);
+  background: oklch(from var(--primary) l c h / 0.1);
+}
+
+.tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: oklch(from var(--primary) l c h / 0.75);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  cursor: col-resize;
+  border-radius: 2px;
+}
+
+.tiptap td:hover .column-resize-handle,
+.tiptap th:hover .column-resize-handle {
+  opacity: 1;
+}
+
+.tiptap mark[data-type="highlight"] {
+  background-color: oklch(from var(--primary) l c h / 0.2);
+  color: inherit;
+  padding: 0 0.1em;
+  border-radius: 0.2rem;
+}
+
+/* Task list */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  column-gap: 0.55rem;
+  margin: 0.5rem 0;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  margin-top: 0.25rem;
+  cursor: pointer;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.2rem;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  margin: 0;
+  padding: 0;
+}
+
+.tiptap ul[data-type="taskList"] li > div p {
+  margin: 0 0 0.6rem;
+}
+
+.tiptap ul[data-type="taskList"] li:last-child > div p:last-child {
+  margin-bottom: 0;
+}
+
+.ProseMirror {
+  outline: none;
+}
+
+/* Avoid double margins when using figure wrapper */
+.tiptap figure[data-type="image-block"] .editor-image {
+  margin: 0;
+  display: block;
+}

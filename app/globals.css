@@ -155,11 +155,3 @@ html {
     @apply bg-background text-foreground;
   }
 }
-
-/* Force iframe yang dibuat YouTube agar mengikuti container aspect-video */
-.yt-embed iframe {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-}
