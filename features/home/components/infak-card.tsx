@@ -7,6 +7,7 @@ import { Container } from "@/components/layout/container";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+import { getPublicMonthlyFinanceLast6 } from "@/features/public/api/public-finance.api";
 
 type InfakPoint = {
   label: string;
@@ -21,16 +22,16 @@ type InfakCardProps = {
   data?: InfakPoint[];
 };
 
-const DEFAULT_DATA: InfakPoint[] = [
-  { label: "Jul", income: 12500000, expense: 7200000 },
-  { label: "Aug", income: 9800000, expense: 6400000 },
-  { label: "Sep", income: 14200000, expense: 8100000 },
-  { label: "Oct", income: 11600000, expense: 9000000 },
-  { label: "Nov", income: 15100000, expense: 8700000 },
-  { label: "Dec", income: 13300000, expense: 7600000 },
-];
+function formatMonthLabel(year: number, month: number) {
+  try {
+    const date = new Date(year, Math.max(0, month - 1), 1);
+    return new Intl.DateTimeFormat("id-ID", { month: "short" }).format(date);
+  } catch {
+    return `M${month}`;
+  }
+}
 
-function Chart({ data }: { data: InfakPoint[] }) {
+function Chart({ data, isLoading, error }: { data: InfakPoint[]; isLoading: boolean; error: string | null }) {
   const chartData = data.map((d) => ({
     month: d.label,
     income: d.income,
@@ -51,20 +52,32 @@ function Chart({ data }: { data: InfakPoint[] }) {
         </div>
       </div>
 
+      {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
+
       {/* IMPORTANT: height must be explicit, or ResponsiveContainer gets -1 */}
       <div className="mt-4 h-[260px] w-full min-w-0">
-        <ChartContainer config={chartConfig} className="h-full w-full">
-          <BarChart data={chartData} margin={{ left: 8, right: 8, top: 8 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={10} />
+        {isLoading ? (
+          <div className="flex h-full items-end gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={`sk_${i}`} className="h-full w-full max-w-[48px] rounded-md bg-muted/60 animate-pulse" />
+            ))}
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Belum ada data.</div>
+        ) : (
+          <ChartContainer config={chartConfig} className="h-full w-full">
+            <BarChart data={chartData} margin={{ left: 8, right: 8, top: 8 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={10} />
 
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
 
-            <Bar dataKey="income" fill="var(--color-income)" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="expense" fill="var(--color-expense)" radius={[6, 6, 0, 0]} />
-          </BarChart>
-        </ChartContainer>
+              <Bar dataKey="income" fill="var(--color-income)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="expense" fill="var(--color-expense)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        )}
       </div>
     </div>
   );
@@ -74,9 +87,55 @@ export function InfakCard({
   qrImageSrc = "/images/qr.jpeg",
   title = "Infak & Pengeluaran Masjid",
   subtitle = "Scan QR untuk infak, dan lihat ringkasan pemasukan/pengeluaran terbaru.",
-  data = DEFAULT_DATA,
+  data,
 }: InfakCardProps) {
   const [hovered, setHovered] = React.useState(false);
+  const [chartData, setChartData] = React.useState<InfakPoint[]>(() => data ?? []);
+  const [isLoading, setIsLoading] = React.useState(data === undefined);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (data !== undefined) {
+      setChartData(data);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const resp = await getPublicMonthlyFinanceLast6(controller.signal);
+        if (!active) return;
+        const mapped = resp.data
+          .slice()
+          .sort((a, b) => (a.year - b.year) || (a.month - b.month))
+          .map((item) => ({
+            label: formatMonthLabel(item.year, item.month),
+            income: item.totalIn,
+            expense: item.totalOut,
+          }));
+        setChartData(mapped);
+      } catch (err) {
+        if (!active) return;
+        setError((err as Error)?.message ?? "Gagal memuat data infak.");
+        setChartData([]);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [data]);
 
   return (
     <section id="infak" aria-label="Infak" className="py-14 md:py-10 scroll-mt-24">
@@ -155,7 +214,7 @@ export function InfakCard({
                     <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">{title}</h2>
                     <p className="mt-3 text-white/80 md:text-lg">{subtitle}</p>
 
-                    <Chart data={data} />
+                    <Chart data={chartData} isLoading={isLoading} error={error} />
                   </div>
                 </RevealItem>
               </div>

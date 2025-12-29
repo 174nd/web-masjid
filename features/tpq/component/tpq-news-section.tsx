@@ -99,17 +99,7 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
   );
 }
 
-export function YayasanNewsSection({
-  items,
-  pageSize = 6,
-  title = "Berita Yayasan",
-  subtitle = "Update",
-}: {
-  items?: PublicNewsCardItem[];
-  pageSize?: number;
-  title?: string;
-  subtitle?: string;
-}) {
+export function TPQNewsSection({ items, pageSize = 6 }: { items?: PublicNewsCardItem[]; pageSize?: number; title?: string; subtitle?: string }) {
   const [page, setPage] = React.useState(1);
   const [loading, setLoading] = React.useState(items === undefined);
   const [error, setError] = React.useState<string | null>(null);
@@ -131,7 +121,7 @@ export function YayasanNewsSection({
       setLoading(true);
       setError(null);
       try {
-        const resp = await getPublicNewsList({ limit: pageSize, page, tagId: 1, signal: controller.signal });
+        const resp = await getPublicNewsList({ limit: pageSize, page, tagId: 3, signal: controller.signal });
         if (!active) return;
         const mapped = resp.data.map(mapPublicNewsItemToCard);
         setNewsItems(mapped);
@@ -171,7 +161,7 @@ export function YayasanNewsSection({
             <div className="flex items-end justify-between gap-6">
               <div>
                 <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
-                  <span className="text-primary">Berita</span> Yayasan
+                  <span className="text-primary">Berita</span> Taman Pendidikan Al-Qur'an
                 </h2>
               </div>
 

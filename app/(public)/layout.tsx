@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Dosis, Oswald, Mr_Dafoe } from "next/font/google";
 import { AppShell } from "@/components/layout/app-shell";
+import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/seo";
 import "@/app/globals.css";
 
 const dosis = Dosis({
@@ -26,7 +27,7 @@ const mrDafoe = Mr_Dafoe({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://DOMAINKAMU.COM"), // ganti domain
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Masjid Asy-Syuhada Batam",
     template: "%s | Masjid Asy-Syuhada Batam",
@@ -39,17 +40,17 @@ export const metadata: Metadata = {
     url: "/",
     title: "Masjid Asy-Syuhada Batam",
     description: "Informasi kegiatan, jadwal sholat, infak & pengeluaran, serta kontak Masjid Asy-Syuhada Batam.",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Masjid Asy-Syuhada" }],
+    images: [{ url: DEFAULT_OG_IMAGE, alt: "Masjid Asy-Syuhada" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Masjid Asy-Syuhada Batam",
     description: "Informasi kegiatan, jadwal sholat, infak & pengeluaran, serta kontak Masjid Asy-Syuhada Batam.",
-    images: ["/og.jpg"],
+    images: [DEFAULT_OG_IMAGE],
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    apple: "/images/logo.png",
   },
 };
 

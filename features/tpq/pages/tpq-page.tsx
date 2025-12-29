@@ -4,8 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Container } from "@/components/layout/container";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
-import { YayasanNewsSection } from "@/features/yayasan/component/yayasan-news-section";
-import { mockTpqNews } from "@/data/mock-tpq-news";
+import { TPQNewsSection } from "../component/tpq-news-section";
 
 type TpqPageClientProps = {
   heroImageSrc?: string;
@@ -121,7 +120,7 @@ export function TpqPageClient({
       </section>
 
       {/* NEWS (pagination + skeleton) */}
-      <YayasanNewsSection items={mockTpqNews} pageSize={6} title="Berita TPQ" subtitle="Update" />
+      <TPQNewsSection pageSize={6} />
     </div>
   );
 }

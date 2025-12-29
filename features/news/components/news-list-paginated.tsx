@@ -4,7 +4,12 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
-import type { NewsItem } from "@/data/mock-news";
+import {
+  getPublicNewsList,
+  isRemotePublicUrl,
+  mapPublicNewsItemToCard,
+  type PublicNewsCardItem,
+} from "@/features/public/api/public-news.api";
 
 function formatDate(iso: string) {
   try {
@@ -32,25 +37,58 @@ export function NewsListPaginated({
   title = "Semua Berita",
   subtitle = "News",
 }: {
-  items: NewsItem[];
+  items?: PublicNewsCardItem[];
   pageSize?: number;
   title?: string;
   subtitle?: string;
 }) {
-  const listItems = React.useMemo(() => items.filter((i) => !i.pinned), [items]);
-
   const [page, setPage] = React.useState(1);
-  const [loading, setLoading] = React.useState(true);
-
-  const totalPages = Math.max(1, Math.ceil(listItems.length / pageSize));
-  const start = (page - 1) * pageSize;
-  const pageItems = listItems.slice(start, start + pageSize);
+  const [loading, setLoading] = React.useState(items === undefined);
+  const [error, setError] = React.useState<string | null>(null);
+  const [newsItems, setNewsItems] = React.useState<PublicNewsCardItem[]>(() => items ?? []);
+  const [remoteTotalPages, setRemoteTotalPages] = React.useState(1);
 
   React.useEffect(() => {
-    setLoading(true);
-    const t = window.setTimeout(() => setLoading(false), 650);
-    return () => window.clearTimeout(t);
-  }, [page]);
+    if (items !== undefined) {
+      setNewsItems(items);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await getPublicNewsList({ limit: pageSize, page, signal: controller.signal });
+        if (!active) return;
+        setNewsItems(resp.data.map(mapPublicNewsItemToCard));
+        setRemoteTotalPages(resp.pagination?.totalPages ?? 1);
+      } catch (err) {
+        if (!active) return;
+        setError((err as Error)?.message ?? "Gagal memuat berita.");
+        setNewsItems([]);
+        setRemoteTotalPages(1);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [items, pageSize, page]);
+
+  const listItems = React.useMemo(() => newsItems.filter((i) => !i.isPinned), [newsItems]);
+
+  const totalPages = items === undefined ? Math.max(1, remoteTotalPages) : Math.max(1, Math.ceil(listItems.length / pageSize));
+  const pageItems = items === undefined ? listItems : listItems.slice((page - 1) * pageSize, page * pageSize);
 
   React.useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -59,6 +97,22 @@ export function NewsListPaginated({
   const btn =
     "inline-flex h-9 items-center justify-center rounded-md border bg-background px-3 text-sm " +
     "transition-colors duration-200 hover:border-primary hover:bg-accent disabled:opacity-50 disabled:hover:bg-background";
+
+  const pages: Array<number | "ellipsis"> = React.useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    if (page <= 3) {
+      return [1, 2, 3, 4, "ellipsis", totalPages];
+    }
+
+    if (page >= totalPages - 2) {
+      return [1, "ellipsis", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return [1, "ellipsis", page - 1, page, page + 1, "ellipsis", totalPages];
+  }, [page, totalPages]);
 
   return (
     <RevealGroup>
@@ -73,13 +127,25 @@ export function NewsListPaginated({
 
       <RevealItem>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {error ? <div className="sm:col-span-2 lg:col-span-3 text-xs text-destructive">{error}</div> : null}
           {loading
             ? Array.from({ length: pageSize }).map((_, i) => <SkeletonCard key={i} />)
             : pageItems.map((n) => (
                 <article key={n.id} className="overflow-hidden rounded-2xl border bg-background transition-colors duration-200 hover:border-primary">
                   <Link href={n.href} className="block">
                     <div className="relative h-40 w-full">
-                      <Image src={n.imageUrl} alt={n.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 360px" />
+                      {n.imageUrl ? (
+                        <Image
+                          src={n.imageUrl}
+                          alt={n.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 1024px) 100vw, 360px"
+                          unoptimized={isRemotePublicUrl(n.imageUrl)}
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-muted" />
+                      )}
                       <div className="absolute inset-0 bg-linear-to-t from-background/55 via-transparent to-transparent" />
                     </div>
 
@@ -108,23 +174,25 @@ export function NewsListPaginated({
             </button>
 
             <div className="hidden items-center gap-1 sm:flex">
-              {Array.from({ length: totalPages }).map((_, i) => {
-                const p = i + 1;
-                const active = p === page;
-                return (
+              {pages.map((p, idx) =>
+                p === "ellipsis" ? (
+                  <span key={`el_${idx}`} className="px-2 text-xs text-muted-foreground">
+                    ...
+                  </span>
+                ) : (
                   <button
                     key={p}
                     onClick={() => setPage(p)}
                     className={
                       "h-9 w-9 rounded-md border text-sm transition-colors duration-200 hover:border-primary hover:bg-accent " +
-                      (active ? "border-primary bg-primary/10" : "bg-background")
+                      (p === page ? "border-primary bg-primary/10" : "bg-background")
                     }
-                    aria-current={active ? "page" : undefined}
+                    aria-current={p === page ? "page" : undefined}
                   >
                     {p}
                   </button>
-                );
-              })}
+                )
+              )}
             </div>
 
             <button className={btn} onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}>

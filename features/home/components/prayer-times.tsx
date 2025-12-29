@@ -5,22 +5,13 @@ import { Container } from "@/components/layout/container";
 import { YouTubeLiveStreamEmbed } from "@/components/media/youtube-livestream-embed";
 import { Badge } from "../../../components/ui/badge";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+import {
+  getPublicPrayerTimes,
+  type PublicPrayerTimesResponse,
+  type PublicPrayerTimesTimings,
+} from "@/features/public/api/public-prayer-times.api";
 
-type Timings = {
-  Fajr: string;
-  Dhuhr: string;
-  Asr: string;
-  Maghrib: string;
-  Isha: string;
-};
-
-type ApiResponse = {
-  city: string;
-  country: string;
-  date: string | null;
-  timezone: string;
-  timings: Timings;
-};
+type Timings = PublicPrayerTimesTimings;
 
 type Row = {
   key: keyof Timings;
@@ -75,7 +66,7 @@ type PrayerTimesBatamProps = {
 };
 
 export function PrayerTimesBatam({ liveVideoId, liveChannelId }: PrayerTimesBatamProps) {
-  const [data, setData] = React.useState<ApiResponse | null>(null);
+  const [data, setData] = React.useState<PublicPrayerTimesResponse | null>(null);
 
   // anti hydration mismatch
   const [mounted, setMounted] = React.useState(false);
@@ -87,10 +78,29 @@ export function PrayerTimesBatam({ liveVideoId, liveChannelId }: PrayerTimesBata
   }, []);
 
   React.useEffect(() => {
-    fetch("/api/prayer-times?city=Batam&country=Indonesia")
-      .then((r) => r.json())
-      .then((j) => setData(j))
-      .catch(() => setData(null));
+    let active = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        const resp = await getPublicPrayerTimes({
+          city: "Batam",
+          country: "Indonesia",
+          signal: controller.signal,
+        });
+        if (!active) return;
+        setData(resp);
+      } catch {
+        if (active) setData(null);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, []);
 
   React.useEffect(() => {

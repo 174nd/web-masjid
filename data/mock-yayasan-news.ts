@@ -1,11 +1,12 @@
 export type YayasanNews = {
-  id: string;
+  id: number | string;
   title: string;
   excerpt: string;
   date: string; // ISO (YYYY-MM-DD)
   href: string;
   category?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  isPinned?: boolean;
 };
 
 export const mockYayasanNews: YayasanNews[] = [

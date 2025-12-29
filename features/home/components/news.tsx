@@ -6,64 +6,15 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Container } from "@/components/layout/container";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+import {
+  getPublicNewsList,
+  getPublicPinnedNews,
+  isRemotePublicUrl,
+  mapPublicNewsItemToCard,
+  type PublicNewsCardItem,
+} from "@/features/public/api/public-news.api";
 
-export type NewsItem = {
-  id: string;
-  title: string;
-  excerpt: string;
-  date: string; // ISO string
-  href: string;
-  imageUrl: string;
-  category?: string;
-};
-
-const MOCK_NEWS: NewsItem[] = [
-  {
-    id: "n1",
-    title: "Launching v1.0: Faster UI, Cleaner Architecture",
-    excerpt: "Rilis pertama dengan fokus pada performa, SEO, dan sistem komponen yang konsisten.",
-    date: "2025-12-01",
-    href: "/news/launching-v1",
-    imageUrl: "/news/news-1.jpg",
-    category: "Release",
-  },
-  {
-    id: "n2",
-    title: "How We Structure Next.js App Router for Scale",
-    excerpt: "Pola folder, boundary, dan konvensi yang memudahkan tim berkembang tanpa refactor besar.",
-    date: "2025-11-20",
-    href: "/news/nextjs-structure",
-    imageUrl: "/news/news-2.jpg",
-    category: "Engineering",
-  },
-  {
-    id: "n3",
-    title: "Design System with Tailwind v4 + shadcn/ui",
-    excerpt: "Menggabungkan token CSS-first Tailwind v4 dengan komponen shadcn agar konsisten dan cepat.",
-    date: "2025-11-08",
-    href: "/news/design-system",
-    imageUrl: "/news/news-3.jpg",
-    category: "Design",
-  },
-  {
-    id: "n4",
-    title: "TanStack Query Patterns for Landing Pages",
-    excerpt: "Cache strategy, prefetch, dan cara menghindari waterfall untuk pengalaman cepat.",
-    date: "2025-10-29",
-    href: "/news/tanstack-query-patterns",
-    imageUrl: "/news/news-4.jpg",
-    category: "Data",
-  },
-  {
-    id: "n5",
-    title: "Form UX: TanStack Form + Validation Strategy",
-    excerpt: "Validasi yang tidak mengganggu user, tapi tetap ketat untuk data integrity.",
-    date: "2025-10-12",
-    href: "/news/tanstack-form-ux",
-    imageUrl: "/news/news-5.jpg",
-    category: "Product",
-  },
-];
+export type NewsItem = PublicNewsCardItem;
 
 function formatDate(iso: string) {
   try {
@@ -128,18 +79,74 @@ export type NewsRotatingProps = {
   subtitle?: string;
 };
 
-export function NewsRotating({
-  items = MOCK_NEWS,
-  intervalMs = 6000,
-  maxList = 4,
-  title = "Updates & Articles",
-  subtitle = "News",
-}: NewsRotatingProps) {
+export function NewsRotating({ items, intervalMs = 6000, maxList = 4, title = "Updates & Articles", subtitle = "News" }: NewsRotatingProps) {
+  const [newsItems, setNewsItems] = React.useState<NewsItem[]>(() => items ?? []);
+  const [isLoading, setIsLoading] = React.useState(items === undefined);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (items !== undefined) {
+      setNewsItems(items);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [pinnedResult, listResult] = await Promise.allSettled([
+          getPublicPinnedNews({ signal: controller.signal }),
+          getPublicNewsList({ limit: 6, page: 1, signal: controller.signal }),
+        ]);
+        if (!active) return;
+        const pinnedItems =
+          pinnedResult.status === "fulfilled"
+            ? pinnedResult.value.data.map(mapPublicNewsItemToCard)
+            : [];
+        const listItems =
+          listResult.status === "fulfilled"
+            ? listResult.value.data.map(mapPublicNewsItemToCard)
+            : [];
+
+        const pinnedIds = new Set(pinnedItems.map((item) => item.id));
+        const merged = [...pinnedItems, ...listItems.filter((item) => !pinnedIds.has(item.id))];
+
+        const pinnedErr = pinnedResult.status === "rejected" ? (pinnedResult.reason as Error)?.message : null;
+        const listErr = listResult.status === "rejected" ? (listResult.reason as Error)?.message : null;
+        if (pinnedErr || listErr) {
+          setError(pinnedErr || listErr || "Gagal memuat berita.");
+        }
+
+        setNewsItems(merged);
+      } catch (err) {
+        if (!active) return;
+        setError((err as Error)?.message ?? "Gagal memuat berita.");
+        setNewsItems([]);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [items]);
   /**
    * order[0] = featured kiri
    * order[1..] = pool list kanan
    */
-  const [order, setOrder] = React.useState<NewsItem[]>(() => items);
+  const [order, setOrder] = React.useState<NewsItem[]>(() => newsItems);
+  React.useEffect(() => {
+    setOrder(newsItems);
+  }, [newsItems]);
 
   // lock tinggi area news supaya tidak menggeser section setelahnya
   const { ref: lockRef, locked } = useMaxLockedHeight([order.length]);
@@ -158,6 +165,7 @@ export function NewsRotating({
     return () => window.clearInterval(id);
   }, [intervalMs, order.length]);
 
+  const hasItems = order.length > 0;
   const featured = order[0];
   const list = order.slice(1, 1 + maxList);
 
@@ -193,81 +201,118 @@ export function NewsRotating({
           {/* LOCK tinggi agar section bawah tidak bergerak */}
           <RevealItem>
             <div ref={lockRef} className="mt-8" style={locked ? { height: locked, overflow: "hidden" } : { minHeight: 520 }}>
-              <div className="grid gap-6 md:grid-cols-12">
-                {/* LEFT: Featured (fade-only) */}
-                <div className="md:col-span-7">
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.article
-                      key={featured.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.35, ease: "easeOut" }}
-                      className="relative overflow-hidden rounded-2xl border bg-background transition-colors duration-200 hover:border-primary"
-                    >
-                      <Link href={featured.href} className="block">
-                        <div className="relative aspect-16/10 w-full">
-                          <Image
-                            src={featured.imageUrl}
-                            alt={featured.title}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 640px"
-                            priority
-                          />
-                          <div className="absolute inset-0 bg-linear-to-t from-background/80 via-background/10 to-transparent" />
-                        </div>
+              {error ? <div className="mb-4 text-xs text-destructive">{error}</div> : null}
 
-                        <div className="p-6">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {featured.category ? <span className="rounded-md border px-2 py-0.5">{featured.category}</span> : null}
-                            <span>{formatDate(featured.date)}</span>
-                          </div>
-
-                          <h3 className="mt-3 line-clamp-2 text-xl font-semibold tracking-tight md:text-2xl">{featured.title}</h3>
-                          <p className="mt-2 line-clamp-3 text-sm text-muted-foreground md:text-base">{featured.excerpt}</p>
-                        </div>
-                      </Link>
-                    </motion.article>
-                  </AnimatePresence>
+              {isLoading && !hasItems ? (
+                <div className="grid gap-6 md:grid-cols-12">
+                  <div className="md:col-span-7">
+                    <div className="h-90 rounded-2xl border bg-muted/50 animate-pulse" />
+                  </div>
+                  <div className="md:col-span-5 space-y-3">
+                    {Array.from({ length: Math.max(3, maxList) }).map((_, i) => (
+                      <div key={`sk_${i}`} className="h-20 rounded-xl border bg-muted/50 animate-pulse" />
+                    ))}
+                  </div>
                 </div>
-
-                {/* RIGHT: List (reorder smooth) */}
-                <div className="md:col-span-5">
-                  <div className="space-y-3">
-                    <AnimatePresence initial={false}>
-                      {list.map((item) => (
+              ) : !hasItems ? (
+                <div className="rounded-xl border bg-background p-6 text-sm text-muted-foreground">Belum ada berita untuk ditampilkan.</div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-12">
+                  {/* LEFT: Featured (fade-only) */}
+                  <div className="md:col-span-7">
+                    {featured ? (
+                      <AnimatePresence mode="wait" initial={false}>
                         <motion.article
-                          key={item.id}
-                          layout
-                          transition={spring}
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          className="overflow-hidden rounded-xl border bg-background transition-colors duration-200 hover:border-primary"
+                          key={featured.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.35, ease: "easeOut" }}
+                          className="relative overflow-hidden rounded-2xl border bg-background transition-colors duration-200 hover:border-primary"
                         >
-                          <Link href={item.href} className="flex gap-3 p-3">
-                            <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
-                              <Image src={item.imageUrl} alt={item.title} fill className="object-cover" sizes="80px" />
+                          <Link href={featured.href} className="block">
+                            <div className="relative aspect-16/10 w-full">
+                              {featured.imageUrl ? (
+                                <Image
+                                  src={featured.imageUrl}
+                                  alt={featured.title}
+                                  fill
+                                  className="object-cover"
+                                  sizes="(max-width: 768px) 100vw, 640px"
+                                  priority
+                                  unoptimized={isRemotePublicUrl(featured.imageUrl)}
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+                                  Tanpa gambar
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-linear-to-t from-background/80 via-background/10 to-transparent" />
                             </div>
 
-                            <div className="min-w-0">
+                            <div className="p-6">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {item.category ? <span>{item.category}</span> : null}
-                                <span className="opacity-70">•</span>
-                                <span>{formatDate(item.date)}</span>
+                                {featured.category ? <span className="rounded-md border px-2 py-0.5">{featured.category}</span> : null}
+                                <span>{formatDate(featured.date)}</span>
                               </div>
 
-                              <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">{item.title}</h4>
-                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.excerpt}</p>
+                              <h3 className="mt-3 line-clamp-2 text-xl font-semibold tracking-tight md:text-2xl">{featured.title}</h3>
+                              <p className="mt-2 line-clamp-3 text-sm text-muted-foreground md:text-base">{featured.excerpt}</p>
                             </div>
                           </Link>
                         </motion.article>
-                      ))}
-                    </AnimatePresence>
+                      </AnimatePresence>
+                    ) : null}
+                  </div>
+
+                  {/* RIGHT: List (reorder smooth) */}
+                  <div className="md:col-span-5">
+                    <div className="space-y-3">
+                      <AnimatePresence initial={false}>
+                        {list.map((item) => (
+                          <motion.article
+                            key={item.id}
+                            layout
+                            transition={spring}
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            className="overflow-hidden rounded-xl border bg-background transition-colors duration-200 hover:border-primary"
+                          >
+                            <Link href={item.href} className="flex gap-3 p-3">
+                              <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                                {item.imageUrl ? (
+                                  <Image
+                                    src={item.imageUrl}
+                                    alt={item.title}
+                                    fill
+                                    className="object-cover"
+                                    sizes="80px"
+                                    unoptimized={isRemotePublicUrl(item.imageUrl)}
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">Tanpa gambar</div>
+                                )}
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  {item.category ? <span>{item.category}</span> : null}
+                                  <span className="opacity-70">•</span>
+                                  <span>{formatDate(item.date)}</span>
+                                </div>
+
+                                <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">{item.title}</h4>
+                                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.excerpt}</p>
+                              </div>
+                            </Link>
+                          </motion.article>
+                        ))}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </RevealItem>
         </RevealGroup>

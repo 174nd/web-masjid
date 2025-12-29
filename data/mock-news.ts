@@ -1,11 +1,11 @@
 export type NewsItem = {
-  id: string;
+  id: number | string;
   title: string;
   excerpt: string;
   date: string; // YYYY-MM-DD
   href: string;
   category?: string;
-  imageUrl: string;
+  imageUrl: string | null;
   pinned?: boolean;
 };
 

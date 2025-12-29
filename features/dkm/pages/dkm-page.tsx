@@ -5,8 +5,6 @@ import Image from "next/image";
 import { Container } from "@/components/layout/container";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import { DkmCashflowCard } from "../component/dkm-cashflow-card";
-import { mockYayasanNews } from "@/data/mock-yayasan-news";
-import { mockDkmCashflow } from "@/data/mock-dkm-cashflow";
 import { DkmOrganizationSection } from "../component/dkm-organization-section";
 import { DkmNewsSection } from "../component/dkm-news-section";
 
@@ -69,7 +67,7 @@ export function DkmPageClient() {
                       structureImageSrc="/dkm/struktur.jpg"
                     />
 
-                    <DkmCashflowCard items={mockDkmCashflow} pageSize={6} />
+                    <DkmCashflowCard pageSize={6} />
                   </div>
                 </RevealItem>
               </RevealGroup>
@@ -81,7 +79,7 @@ export function DkmPageClient() {
       {/* CASHFLOW TABLE (pagination inside card) */}
 
       {/* NEWS (same as before) */}
-      <DkmNewsSection items={mockYayasanNews} pageSize={6} />
+      <DkmNewsSection pageSize={6} />
     </div>
   );
 }

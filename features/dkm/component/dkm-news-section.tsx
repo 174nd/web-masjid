@@ -5,7 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/layout/container";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
-import type { YayasanNews } from "@/data/mock-yayasan-news";
+import {
+  getPublicNewsList,
+  isRemotePublicUrl,
+  mapPublicNewsItemToCard,
+  type PublicNewsCardItem,
+} from "@/features/public/api/public-news.api";
 
 function formatDate(iso: string) {
   try {
@@ -36,6 +41,22 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
     "inline-flex h-9 items-center justify-center rounded-md border bg-background px-3 text-sm " +
     "transition-colors duration-200 hover:border-primary hover:bg-accent disabled:opacity-50 disabled:hover:bg-background";
 
+  const pages: Array<number | "ellipsis"> = React.useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    if (page <= 3) {
+      return [1, 2, 3, 4, "ellipsis", totalPages];
+    }
+
+    if (page >= totalPages - 2) {
+      return [1, "ellipsis", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return [1, "ellipsis", page - 1, page, page + 1, "ellipsis", totalPages];
+  }, [page, totalPages]);
+
   return (
     <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
       <p className="text-xs text-muted-foreground">
@@ -49,23 +70,25 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
 
         {/* simple number buttons */}
         <div className="flex items-center gap-1">
-          {Array.from({ length: totalPages }).map((_, i) => {
-            const p = i + 1;
-            const active = p === page;
-            return (
+          {pages.map((p, idx) =>
+            p === "ellipsis" ? (
+              <span key={`el_${idx}`} className="px-2 text-xs text-muted-foreground">
+                ...
+              </span>
+            ) : (
               <button
                 key={p}
                 onClick={() => onPage(p)}
                 className={
                   "h-9 w-9 rounded-md border text-sm transition-colors duration-200 hover:border-primary hover:bg-accent " +
-                  (active ? "border-primary bg-primary/10" : "bg-background")
+                  (p === page ? "border-primary bg-primary/10" : "bg-background")
                 }
-                aria-current={active ? "page" : undefined}
+                aria-current={p === page ? "page" : undefined}
               >
                 {p}
               </button>
-            );
-          })}
+            )
+          )}
         </div>
 
         <button className={btn} onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}>
@@ -82,30 +105,63 @@ export function DkmNewsSection({
   title = "Berita Dkm",
   subtitle = "Update",
 }: {
-  items: YayasanNews[];
+  items?: PublicNewsCardItem[];
   pageSize?: number;
   title?: string;
   subtitle?: string;
 }) {
   const [page, setPage] = React.useState(1);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(items === undefined);
+  const [error, setError] = React.useState<string | null>(null);
+  const [newsItems, setNewsItems] = React.useState<PublicNewsCardItem[]>(() => items ?? []);
+  const [remoteTotalPages, setRemoteTotalPages] = React.useState(1);
 
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-
-  // Simulasi loading agar skeleton terlihat (gantikan dengan fetch API nanti)
   React.useEffect(() => {
-    setLoading(true);
-    const t = window.setTimeout(() => setLoading(false), 650);
-    return () => window.clearTimeout(t);
-  }, [page]);
+    if (items !== undefined) {
+      setNewsItems(items);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await getPublicNewsList({ limit: pageSize, page, tagId: 2, signal: controller.signal });
+        if (!active) return;
+        const mapped = resp.data.map(mapPublicNewsItemToCard);
+        setNewsItems(mapped);
+        setRemoteTotalPages(resp.pagination?.totalPages ?? 1);
+      } catch (err) {
+        if (!active) return;
+        setError((err as Error)?.message ?? "Gagal memuat berita.");
+        setNewsItems([]);
+        setRemoteTotalPages(1);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [items, pageSize, page]);
+
+  const totalPages = items === undefined ? Math.max(1, remoteTotalPages) : Math.max(1, Math.ceil(newsItems.length / pageSize));
 
   React.useEffect(() => {
     // clamp jika items berubah
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const start = (page - 1) * pageSize;
-  const pageItems = items.slice(start, start + pageSize);
+  const pageItems = items === undefined ? newsItems : newsItems.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <section aria-label="Berita yayasan" className="py-10 md:py-14">
@@ -135,6 +191,7 @@ export function DkmNewsSection({
 
           <RevealItem>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {error ? <div className="sm:col-span-2 lg:col-span-3 text-xs text-destructive">{error}</div> : null}
               {loading
                 ? Array.from({ length: pageSize }).map((_, i) => <NewsCardSkeleton key={i} />)
                 : pageItems.map((n) => (
@@ -145,7 +202,14 @@ export function DkmNewsSection({
                       <Link href={n.href} className="block">
                         <div className="relative h-40 w-full">
                           {n.imageUrl ? (
-                            <Image src={n.imageUrl} alt={n.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 360px" />
+                            <Image
+                              src={n.imageUrl}
+                              alt={n.title}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 1024px) 100vw, 360px"
+                              unoptimized={isRemotePublicUrl(n.imageUrl ?? null)}
+                            />
                           ) : (
                             <div className="h-full w-full bg-muted" />
                           )}

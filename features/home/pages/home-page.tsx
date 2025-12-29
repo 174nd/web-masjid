@@ -4,6 +4,7 @@ import { InfakCard } from "../components/infak-card";
 import { NewsRotating } from "../components/news";
 import { PrayerTimesBatam } from "../components/prayer-times";
 import { ContactCard } from "@/features/home/components/contact-card";
+import { SITE_URL } from "@/lib/seo";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -18,7 +19,7 @@ const jsonLd = {
     addressCountry: "ID",
   },
   telephone: "+62 812-3456-7890",
-  url: "https://DOMAINKAMU.COM",
+  url: SITE_URL,
   sameAs: ["https://instagram.com/USERNAME_MASJID", "https://facebook.com/PAGE_MASJID", "https://youtube.com/@CHANNEL_MASJID"],
 };
 

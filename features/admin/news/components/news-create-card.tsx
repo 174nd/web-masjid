@@ -254,7 +254,7 @@ export function NewsCreateCard({
             <div className="space-y-2">
               <Label htmlFor={field.name}>Isi Berita</Label>
               {isLoading || isEditBlocked ? (
-                <div className="min-h-[180px] rounded-md border bg-muted/50 animate-pulse" />
+                <div className="min-h-45 rounded-md border bg-muted/50 animate-pulse" />
               ) : (
                 <TextEditor
                   key={mode === "edit" && news ? `edit-${news.id}` : "create"}

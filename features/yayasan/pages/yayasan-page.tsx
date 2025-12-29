@@ -5,7 +5,6 @@ import Image from "next/image";
 import { Container } from "@/components/layout/container";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import { YayasanNewsSection } from "../component/yayasan-news-section";
-import { mockYayasanNews } from "@/data/mock-yayasan-news";
 
 export function YayasanPageClient() {
   return (
@@ -100,7 +99,7 @@ export function YayasanPageClient() {
                     </RevealGroup>
                   </div>
 
-                  <YayasanNewsSection items={mockYayasanNews} pageSize={6} />
+                  <YayasanNewsSection pageSize={6} />
                 </RevealItem>
               </RevealGroup>
             </div>
